@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# other files
+.vscode/
+*.graphml
+src/aqi_updater/aqi_cache
+src/aqi_updater/aqi_updates
