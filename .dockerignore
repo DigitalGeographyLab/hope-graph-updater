@@ -1,0 +1,8 @@
+.git
+.gitignore
+**/*.log
+**/*.env
+**/*.csv
+**/*.tif
+*/debug*
+**/*__pycache__*
