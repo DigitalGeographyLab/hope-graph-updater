@@ -2,9 +2,9 @@
 
 set -ex
 
-TAG=${1}
 USER='hellej'
-DOCKER_IMAGE=${USER}/hope-graph-updater:${TAG}
+
+DOCKER_IMAGE=${USER}/hope-graph-updater:dev
 DOCKER_IMAGE_LATEST=${USER}/hope-graph-updater:latest
 
 docker build -t ${DOCKER_IMAGE} .
