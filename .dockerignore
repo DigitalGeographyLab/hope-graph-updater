@@ -6,3 +6,5 @@
 **/*.tif
 */debug*
 **/*__pycache__*
+**/*.graphml
+!/src/aqi_updater/kumpula_noises_final.graphml
