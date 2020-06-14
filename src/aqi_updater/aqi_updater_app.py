@@ -6,7 +6,7 @@ from aqi_updater import AqiUpdater
 from load_env_vars import load_env_vars
 from common.logger import Logger
 import common.igraph as ig_utils
-from common.schema import Edge as E
+from common.igraph import Edge as E
 
 log = Logger(printing=True, log_file='aqi_updater_app.log')
 load_env_vars(log)

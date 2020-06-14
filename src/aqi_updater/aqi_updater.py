@@ -7,7 +7,7 @@ import pandas as pd
 import geopandas as gpd
 from shapely.geometry import LineString
 import common.igraph as ig_utils
-from common.schema import Edge as E
+from common.igraph import Edge as E
 from common.logger import Logger
 
 class AqiUpdater():
