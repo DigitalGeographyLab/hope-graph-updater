@@ -49,7 +49,7 @@ class Edge(Enum):
    noises: Dict[int, float] = 'n' # nodata = None, no noises = {}
    noise_source: NoiseSource = 'ns' # nodata = None, no noises = ''
    noise_sources: Dict[NoiseSource, int] = 'nss' # nodata = None, no noises = {}
-   aqi: float = 'aqi' # air quality index
+   aqi: float = 'aqi' # air quality index, nodata = None
 
 def to_str(value):
     return str(value) if value != 'None' else None

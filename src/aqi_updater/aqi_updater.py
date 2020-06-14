@@ -2,6 +2,7 @@ from typing import List, Set, Dict, Tuple, Optional
 import sys
 sys.path.append('..')
 import os
+import numpy as np
 import rasterio
 import pandas as pd
 import geopandas as gpd
@@ -95,10 +96,24 @@ class AqiUpdater():
 
         return gdf
 
+    def __get_valid_aqi_or_none(self, aqi: float):
+        if (np.isfinite(aqi)):
+            if (aqi < 0.95):
+                return None
+            elif (aqi < 1):
+                return 1.0
+            else:
+                return aqi
+        else:
+            return None
+
     def __combine_final_sample_df(self, sampling_gdf) -> gpd.GeoDataFrame:
-        # TODO filter out rows with missing AQI
         edge_gdf_copy = self.__edge_gdf[[E.id_ig.name, 'lat_lon_id']].copy()
         final_sample_df = pd.merge(edge_gdf_copy, sampling_gdf[['lat_lon_id', 'aqi']], on='lat_lon_id', how='left')
+        final_sample_df['aqi'] == [self.__get_valid_aqi_or_none(aqi) for aqi in final_sample_df['aqi']]
+        sample_count_all = len(final_sample_df)
+        final_sample_df = final_sample_df[final_sample_df['aqi'].notnull()]
+        self.log.info(f'found {round(100 * len(final_sample_df)/sample_count_all, 2)} % valid AQI samples')
         return final_sample_df[[E.id_ig.name, 'aqi']]
 
     def __round_coordinates(self, coords_list: List[tuple], digits=6) -> List[tuple]:
