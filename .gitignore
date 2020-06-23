@@ -130,6 +130,6 @@ dmypy.json
 
 # other files
 .vscode/
-*.graphml
+hma.graphml
 src/aqi_updater/aqi_cache
 src/aqi_updater/aqi_updates

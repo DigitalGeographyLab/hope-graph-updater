@@ -8,3 +8,4 @@
 **/*__pycache__*
 **/*.graphml
 !/src/aqi_updater/graph/kumpula.graphml
+!/src/aqi_updater/graph/hma.graphml
