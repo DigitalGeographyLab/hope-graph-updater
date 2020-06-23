@@ -96,24 +96,24 @@ class AqiUpdater():
 
         return gdf
 
-    def __get_valid_aqi_or_none(self, aqi: float):
+    def __get_valid_aqi_or_nan(self, aqi: float):
         if (np.isfinite(aqi)):
             if (aqi < 0.95):
-                return None
+                return np.nan
             elif (aqi < 1):
                 return 1.0
             else:
                 return aqi
         else:
-            return None
+            return np.nan
 
     def __combine_final_sample_df(self, sampling_gdf) -> gpd.GeoDataFrame:
         edge_gdf_copy = self.__edge_gdf[[E.id_ig.name, 'lat_lon_id']].copy()
         final_sample_df = pd.merge(edge_gdf_copy, sampling_gdf[['lat_lon_id', 'aqi']], on='lat_lon_id', how='left')
-        final_sample_df['aqi'] == [self.__get_valid_aqi_or_none(aqi) for aqi in final_sample_df['aqi']]
+        final_sample_df['aqi'] = [self.__get_valid_aqi_or_nan(aqi) for aqi in final_sample_df['aqi']]
         sample_count_all = len(final_sample_df)
         final_sample_df = final_sample_df[final_sample_df['aqi'].notnull()]
-        self.log.info(f'found {round(100 * len(final_sample_df)/sample_count_all, 2)} % valid AQI samples')
+        self.log.info(f'found valid AQI samples for {round(100 * len(final_sample_df)/sample_count_all, 2)} % edges')
         return final_sample_df[[E.id_ig.name, 'aqi']]
 
     def __round_coordinates(self, coords_list: List[tuple], digits=6) -> List[tuple]:
@@ -130,6 +130,8 @@ class AqiUpdater():
                 return 3
             elif (aqi == 0.0): # aqi is just missing
                 return 1
+            elif (aqi < 1):
+                return 2
             else:
                 return 0
 
@@ -144,7 +146,6 @@ class AqiUpdater():
             edge_gdf_copy.drop(columns=['uvkey', 'center_wgs']).to_file('debug/debug.gpkg', layer='edge_centers_wgs', driver="GPKG")
         
         if (row_count == aqi_ok_count):
-            self.log.info('invalid aqi count: '+ str(len(edge_gdf_copy[edge_gdf_copy['aqi_validity'] == 1].index)))
             return True
         else:
             error_count = row_count - aqi_ok_count
