@@ -5,4 +5,5 @@ WORKDIR /src/aqi_updater
 RUN conda env create -f /src/conda-env.yml && conda clean -afy
 ENV PATH /opt/conda/envs/aqi-env/bin:$PATH
 
-CMD python aqi_updater_app.py
+RUN chmod +x start-application.sh
+CMD ./start-application.sh
