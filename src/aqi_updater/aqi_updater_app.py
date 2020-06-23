@@ -20,7 +20,7 @@ def fetch_process_aqi_data():
         aqi_fetcher.fetch_process_current_aqi_data()
         log.info('AQI fetch & processing succeeded')
     except Exception:
-        traceback.print_exc()
+        log.error(traceback.format_exc())
         log.error(f'failed to process AQI data to {aqi_fetcher.wip_aqi_tif}, retrying in 30s')
         time.sleep(30)
     finally:
@@ -31,7 +31,7 @@ def create_aqi_update_csv():
         aqi_updater.create_aqi_update_csv(aqi_fetcher.latest_aqi_tif)
         log.info('AQI update succeeded')
     except Exception:
-        traceback.print_exc()
+        log.error(traceback.format_exc())
         log.error(f'failed to update AQI from {aqi_fetcher.latest_aqi_tif}, retrying in 30s')
         time.sleep(30)
     finally:
