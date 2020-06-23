@@ -1,3 +1,4 @@
+import os
 import time
 import traceback
 from datetime import datetime
@@ -10,7 +11,9 @@ from common.igraph import Edge as E
 
 log = Logger(printing=True, log_file='aqi_updater_app.log')
 load_env_vars(log)
-graph = ig_utils.read_graphml('graph/kumpula.graphml')
+
+graph_subset = eval(os.getenv('GRAPH_SUBSET', 'False'))
+graph = ig_utils.read_graphml('graph/kumpula.graphml' if graph_subset else 'graph/hma.graphml')
 
 aqi_fetcher = AqiFetcher(log)
 aqi_updater = AqiUpdater(log, graph)

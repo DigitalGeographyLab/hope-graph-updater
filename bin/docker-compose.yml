@@ -3,6 +3,8 @@ version: '3.1'
 services:
   hope-graph-updater:
     image: hellej/hope-graph-updater:latest
+    environment: 
+      - RUN_DEV=True
     volumes:
       - aqi-updates:/src/aqi_updater/aqi_updates
     secrets:
