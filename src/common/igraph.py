@@ -31,6 +31,7 @@ class Node(Enum):
 class Edge(Enum):
    id_ig: int = 'ii'
    id_otp: str = 'io'
+   id_way: int = 'iw' # for similar geometries (e.g. two-way connections between node pairs)
    uv: tuple = 'uv' # source & target node ids as a tuple
    name_otp: str = 'no'
    geometry: LineString = 'geom'
@@ -49,7 +50,7 @@ class Edge(Enum):
    noises: Dict[int, float] = 'n' # nodata = None, no noises = {}
    noise_source: NoiseSource = 'ns' # nodata = None, no noises = ''
    noise_sources: Dict[NoiseSource, int] = 'nss' # nodata = None, no noises = {}
-   aqi: float = 'aqi' # air quality index, nodata = None
+   aqi: float = 'aqi' # air quality index
 
 def to_str(value):
     return str(value) if value != 'None' else None
@@ -69,6 +70,7 @@ def to_tuple(value):
 edge_attr_converters = {
     Edge.id_ig: to_int,
     Edge.id_otp: to_str,
+    Edge.id_way: to_int,
     Edge.uv: to_tuple,
     Edge.name_otp: to_str,
     Edge.geometry: to_geom,

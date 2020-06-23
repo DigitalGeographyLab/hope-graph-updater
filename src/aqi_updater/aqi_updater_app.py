@@ -10,7 +10,7 @@ from common.igraph import Edge as E
 
 log = Logger(printing=True, log_file='aqi_updater_app.log')
 load_env_vars(log)
-graph = ig_utils.read_graphml('graph/kumpula_noises_final.graphml')
+graph = ig_utils.read_graphml('graph/kumpula.graphml')
 
 aqi_fetcher = AqiFetcher(log)
 aqi_updater = AqiUpdater(log, graph)

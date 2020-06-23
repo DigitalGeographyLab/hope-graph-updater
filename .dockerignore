@@ -7,4 +7,4 @@
 */debug*
 **/*__pycache__*
 **/*.graphml
-!/src/aqi_updater/graph/kumpula_noises_final.graphml
+!/src/aqi_updater/graph/kumpula.graphml
