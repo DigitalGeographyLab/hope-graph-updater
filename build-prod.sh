@@ -12,9 +12,10 @@ fi
 
 echo "Building images with tags 1 & ${RELEASE_TAG}"
 
-for TAG in 1 ${RELEASE_TAG}; do
-  DOCKER_IMAGE=${USER}/hope-graph-updater:${TAG}
+DOCKER_IMAGE=${USER}/hope-graph-updater
 
-  docker build -t ${DOCKER_IMAGE} .
-  docker push ${DOCKER_IMAGE}
+docker build -t ${DOCKER_IMAGE}:1 -t ${DOCKER_IMAGE}:${RELEASE_TAG} .
+
+for TAG in 1 ${RELEASE_TAG}; do
+  docker push ${DOCKER_IMAGE}:${TAG}
 done

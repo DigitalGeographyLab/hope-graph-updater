@@ -4,9 +4,10 @@ set -ex
 
 USER='hellej'
 
-for TAG in latest dev; do
-  DOCKER_IMAGE=${USER}/hope-graph-updater:${TAG}
+DOCKER_IMAGE=${USER}/hope-graph-updater
 
-  docker build -t ${DOCKER_IMAGE} .
-  docker push ${DOCKER_IMAGE}
+docker build -t ${DOCKER_IMAGE}:dev -t ${DOCKER_IMAGE}:latest .
+
+for TAG in dev latest; do
+  docker push ${DOCKER_IMAGE}:${TAG}
 done
