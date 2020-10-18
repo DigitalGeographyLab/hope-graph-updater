@@ -1,8 +1,10 @@
 from typing import List, Set, Dict, Tuple, Optional
 import sys
 sys.path.append('..')
+from math import floor
 import os
 import numpy as np
+import json
 import rasterio
 import pandas as pd
 import geopandas as gpd
@@ -11,6 +13,7 @@ import common.igraph as ig_utils
 from common.igraph import Edge as E
 from common.logger import Logger
 
+
 class AqiUpdater():
 
     def __init__(self, log: Logger, graph, aqi_cache: str='aqi_cache/', aqi_updates: str='aqi_updates/'):
@@ -18,7 +21,7 @@ class AqiUpdater():
         self.wip_aqi_csv: str = ''
         self.latest_aqi_csv: str = ''
         self.__edge_gdf = self.__get_sampling_point_gdf_from_graph(graph)
-        self.__sampling_gdf = self.__edge_gdf.drop_duplicates('lat_lon_id')
+        self.__sampling_gdf = self.__edge_gdf.drop_duplicates(E.id_way.name)
         self.__aqi_cache = aqi_cache
         self.__aqi_updates = aqi_updates
         self.__status = ''
@@ -30,10 +33,10 @@ class AqiUpdater():
         b_available = True
         status = ''
         if (self.latest_aqi_csv == self.__get_aqi_csv_name(latest_aqi_tif_name)):
-            status = 'latest AQI update already done'
+            status = 'Latest AQI update already done'
             b_available = False
         else:
-            status = 'new AQI update available: '+ latest_aqi_tif_name
+            status = 'New AQI update available: '+ latest_aqi_tif_name
             b_available = True
 
         if (self.__status != status):
@@ -46,10 +49,12 @@ class AqiUpdater():
         self.wip_aqi_csv = self.__get_aqi_csv_name(aqi_tif_name)
         aqi_tif_file = self.__aqi_cache + aqi_tif_name
         edge_aqi_df = self.__sample_aqi_to_point_gdf(aqi_tif_file)
-        # export sampled aqi values to csv
+        # export sampled AQI values to json for AQI map
+        self.__export_aqi_map_json(edge_aqi_df)
+        # export sampled AQI values to csv
         final_edge_aqi_samples = self.__combine_final_sample_df(edge_aqi_df)
         final_edge_aqi_samples.to_csv(self.__aqi_updates + self.wip_aqi_csv, index=False)
-        self.log.info('exported edge_aqi_csv '+ self.wip_aqi_csv)
+        self.log.info(f'Exported edge_aqi_csv: {self.wip_aqi_csv}')
         self.latest_aqi_csv = self.wip_aqi_csv
 
     def finish_aqi_update(self) -> None:
@@ -60,16 +65,15 @@ class AqiUpdater():
         return aqi_tif_name.replace('.tif', '.csv')
 
     def __get_sampling_point_gdf_from_graph(self, graph) -> gpd.GeoDataFrame:
-        """Filters out null geometries from edge_gdf and adds columns point_geom & lat_lon_id.
+        """Filters out null geometries and adds point geometries.
         """
-        edge_gdf = ig_utils.get_edge_gdf(graph, attrs=[E.id_ig], geom_attr=E.geom_wgs)
+        edge_gdf = ig_utils.get_edge_gdf(graph, attrs=[E.id_ig, E.id_way], geom_attr=E.geom_wgs)
         # filter out edges with null geometry
         edge_gdf = edge_gdf[edge_gdf[E.geom_wgs.name].apply(lambda x: isinstance(x, LineString))]
         edge_gdf['point_geom'] = [geom.interpolate(0.5, normalized=True) for geom in edge_gdf[E.geom_wgs.name]]
-        edge_gdf['lat_lon_id'] = [f'{str(round(geom.x, 7))}_{str(round(geom.y, 7))}' for geom in edge_gdf['point_geom']]
         return edge_gdf
 
-    def __sample_aqi_to_point_gdf(self, aqi_tif_file: str) -> str:
+    def __sample_aqi_to_point_gdf(self, aqi_tif_file: str) -> gpd.GeoDataFrame:
         """Joins AQI values from an AQI raster file to edges (edge_gdf) of a graph by spatial sampling. 
         Column 'aqi' will be added to the G.edge_gdf. Center points of the edges are used in the spatial join. 
         Exports a csv file of ege keys and corresponding AQI values to use for updating AQI values to a graph.
@@ -92,8 +96,9 @@ class AqiUpdater():
 
         # validate sampled aqi values
         if (self.__validate_df_aqi(gdf, debug_to_file=False) == False):
-            self.log.error('aqi sampling failed')
+            self.log.error('AQI sampling failed')
 
+        gdf['aqi'] = [self.__get_valid_aqi_or_nan(aqi) for aqi in gdf['aqi']]
         return gdf
 
     def __get_valid_aqi_or_nan(self, aqi: float):
@@ -107,17 +112,31 @@ class AqiUpdater():
         else:
             return np.nan
 
+    def __get_aqi_class(self, aqi: float):
+        """Returns AQI class identifier, that is in the range from 2 to 10. Returns 0 if the given AQI is invalid.
+        AQI classes represent (9x) 0.5 intervals in the original AQI scale from 1.0 to 5.0.
+        """
+        return floor(aqi * 2) if np.isfinite(aqi) else 0
+
+    def __export_aqi_map_json(self, sample_gdf: gpd.GeoDataFrame):
+        gdf = sample_gdf[[E.id_way.name, 'aqi']].copy()
+        gdf = gdf[gdf['aqi'].notnull()]
+        gdf['aqi_class'] = [self.__get_aqi_class(aqi) for aqi in gdf['aqi']]
+        id_aqi_pairs = list(zip(gdf[E.id_way.name].tolist(), gdf['aqi_class'].tolist()))
+        with open(self.__aqi_updates + 'aqi_map.json', 'w') as json_file:
+            json.dump({ 'data': id_aqi_pairs }, json_file, separators=(',', ':'))
+        self.log.info(f'Exported current AQI for map: {self.__aqi_updates}aqi_map.json')
+
     def __combine_final_sample_df(self, sampling_gdf) -> gpd.GeoDataFrame:
-        edge_gdf_copy = self.__edge_gdf[[E.id_ig.name, 'lat_lon_id']].copy()
-        final_sample_df = pd.merge(edge_gdf_copy, sampling_gdf[['lat_lon_id', 'aqi']], on='lat_lon_id', how='left')
-        final_sample_df['aqi'] = [self.__get_valid_aqi_or_nan(aqi) for aqi in final_sample_df['aqi']]
+        edge_gdf_copy = self.__edge_gdf[[E.id_ig.name, E.id_way.name]].copy()
+        final_sample_df = pd.merge(edge_gdf_copy, sampling_gdf[[E.id_way.name, 'aqi']], on=E.id_way.name, how='left')
         sample_count_all = len(final_sample_df)
         final_sample_df = final_sample_df[final_sample_df['aqi'].notnull()]
-        self.log.info(f'found valid AQI samples for {round(100 * len(final_sample_df)/sample_count_all, 2)} % edges')
+        self.log.info(f'Found valid AQI samples for {round(100 * len(final_sample_df)/sample_count_all, 2)} % edges')
         return final_sample_df[[E.id_ig.name, 'aqi']]
 
     def __round_coordinates(self, coords_list: List[tuple], digits=6) -> List[tuple]:
-        return [ (round(coords[0], digits), round(coords[1], digits)) for coords in coords_list]
+        return [(round(coords[0], digits), round(coords[1], digits)) for coords in coords_list]
 
     def __validate_df_aqi(self, edge_gdf: 'pandas DataFrame', debug_to_file: bool=False) -> bool:
         """Validates a dataframe containing AQI values. Checks the validity of the AQI values with several tests.
@@ -135,7 +154,7 @@ class AqiUpdater():
             else:
                 return 0
 
-        edge_gdf_copy = edge_gdf.copy()
+        edge_gdf_copy = edge_gdf[['aqi']].copy()
         edge_gdf_copy['aqi_validity'] = [validate_aqi_exp(aqi) for aqi in edge_gdf_copy['aqi']]
         row_count = len(edge_gdf_copy.index)
         aqi_ok_count = len(edge_gdf_copy[edge_gdf_copy['aqi_validity'] <= 1].index)
@@ -150,9 +169,9 @@ class AqiUpdater():
         else:
             error_count = row_count - aqi_ok_count
             valid_ratio = round(100 * aqi_ok_count/row_count, 2)
-            self.log.warning('row count: '+ str(row_count) +' of which has valid aqi: '+
+            self.log.warning('Row count: '+ str(row_count) +' of which has valid aqi: '+
                 str(aqi_ok_count)+ ' = '+ str(valid_ratio) + ' %')
-            self.log.warning('invalid aqi count: '+ str(error_count))
+            self.log.warning('Invalid aqi count: '+ str(error_count))
             return False
 
     def __remove_old_update_files(self) -> None:
@@ -168,6 +187,6 @@ class AqiUpdater():
                 except Exception:
                     error_count += 1
                     pass
-        self.log.info('removed '+ str(rm_count) +' old edge aqi csv files')
+        self.log.info('Removed '+ str(rm_count) +' old edge aqi csv files')
         if (error_count > 0):
-            self.log.warning(f'could not remove {error_count} old edge aqi csv files')
+            self.log.warning(f'Could not remove {error_count} old edge aqi csv files')

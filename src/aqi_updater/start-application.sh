@@ -1,10 +1,9 @@
 #!/bin/bash
 
-if [[ ! -z "${RUN_DEV}" && "${RUN_DEV}" = "True" ]]; then
-  echo "Starting AQI updater with small graph (dev)"
-  export GRAPH_SUBSET="True"
-  python -u aqi_updater_app.py
+if [[ ! -z "${GRAPH_SUBSET}" && "${GRAPH_SUBSET}" = "True" ]]; then
+  echo "Starting AQI updater with graph subset"
 else
-  echo "Starting AQI updater with full graph (prod)"
-  python -u aqi_updater_app.py
+  echo "Starting AQI updater with full graph"
 fi
+
+python -u aqi_updater_app.py
