@@ -133,3 +133,7 @@ dmypy.json
 hma.graphml
 src/aqi_updater/aqi_cache
 src/aqi_updater/aqi_updates
+.DS_Store
+
+# tests
+src/tests/test_aqi_updates/
