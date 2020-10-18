@@ -122,7 +122,7 @@ class AqiUpdater():
         gdf = gdf[gdf['aqi'].notnull()]
         gdf['aqi_class'] = [self.__get_aqi_class(aqi) for aqi in gdf['aqi']]
         id_aqi_pairs = list(zip(gdf[E.id_way.name].tolist(), gdf['aqi_class'].tolist()))
-        with open('aqi_updates/aqi_map.json', 'w') as json_file:
+        with open(self.__aqi_updates + 'aqi_map.json', 'w') as json_file:
             json.dump({ 'data': id_aqi_pairs }, json_file, separators=(',', ':'))
 
     def __combine_final_sample_df(self, sampling_gdf) -> gpd.GeoDataFrame:
