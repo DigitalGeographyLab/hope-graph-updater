@@ -135,3 +135,6 @@ src/aqi_updater/aqi_cache
 src/aqi_updater/aqi_updates
 src/aqi_updater/aqi_map.json
 .DS_Store
+
+# tests
+src/tests/test_aqi_updates/
