@@ -13,6 +13,7 @@ import common.igraph as ig_utils
 from common.igraph import Edge as E
 from common.logger import Logger
 
+
 class AqiUpdater():
 
     def __init__(self, log: Logger, graph, aqi_cache: str='aqi_cache/', aqi_updates: str='aqi_updates/'):
@@ -32,10 +33,10 @@ class AqiUpdater():
         b_available = True
         status = ''
         if (self.latest_aqi_csv == self.__get_aqi_csv_name(latest_aqi_tif_name)):
-            status = 'latest AQI update already done'
+            status = 'Latest AQI update already done'
             b_available = False
         else:
-            status = 'new AQI update available: '+ latest_aqi_tif_name
+            status = 'New AQI update available: '+ latest_aqi_tif_name
             b_available = True
 
         if (self.__status != status):
@@ -53,7 +54,7 @@ class AqiUpdater():
         # export sampled AQI values to csv
         final_edge_aqi_samples = self.__combine_final_sample_df(edge_aqi_df)
         final_edge_aqi_samples.to_csv(self.__aqi_updates + self.wip_aqi_csv, index=False)
-        self.log.info('exported edge_aqi_csv '+ self.wip_aqi_csv)
+        self.log.info(f'Exported edge_aqi_csv: {self.wip_aqi_csv}')
         self.latest_aqi_csv = self.wip_aqi_csv
 
     def finish_aqi_update(self) -> None:
@@ -95,7 +96,7 @@ class AqiUpdater():
 
         # validate sampled aqi values
         if (self.__validate_df_aqi(gdf, debug_to_file=False) == False):
-            self.log.error('aqi sampling failed')
+            self.log.error('AQI sampling failed')
 
         gdf['aqi'] = [self.__get_valid_aqi_or_nan(aqi) for aqi in gdf['aqi']]
         return gdf
@@ -124,13 +125,14 @@ class AqiUpdater():
         id_aqi_pairs = list(zip(gdf[E.id_way.name].tolist(), gdf['aqi_class'].tolist()))
         with open(self.__aqi_updates + 'aqi_map.json', 'w') as json_file:
             json.dump({ 'data': id_aqi_pairs }, json_file, separators=(',', ':'))
+        self.log.info(f'Exported current AQI for map: {self.__aqi_updates}aqi_map.json')
 
     def __combine_final_sample_df(self, sampling_gdf) -> gpd.GeoDataFrame:
         edge_gdf_copy = self.__edge_gdf[[E.id_ig.name, E.id_way.name]].copy()
         final_sample_df = pd.merge(edge_gdf_copy, sampling_gdf[[E.id_way.name, 'aqi']], on=E.id_way.name, how='left')
         sample_count_all = len(final_sample_df)
         final_sample_df = final_sample_df[final_sample_df['aqi'].notnull()]
-        self.log.info(f'found valid AQI samples for {round(100 * len(final_sample_df)/sample_count_all, 2)} % edges')
+        self.log.info(f'Found valid AQI samples for {round(100 * len(final_sample_df)/sample_count_all, 2)} % edges')
         return final_sample_df[[E.id_ig.name, 'aqi']]
 
     def __round_coordinates(self, coords_list: List[tuple], digits=6) -> List[tuple]:
@@ -167,9 +169,9 @@ class AqiUpdater():
         else:
             error_count = row_count - aqi_ok_count
             valid_ratio = round(100 * aqi_ok_count/row_count, 2)
-            self.log.warning('row count: '+ str(row_count) +' of which has valid aqi: '+
+            self.log.warning('Row count: '+ str(row_count) +' of which has valid aqi: '+
                 str(aqi_ok_count)+ ' = '+ str(valid_ratio) + ' %')
-            self.log.warning('invalid aqi count: '+ str(error_count))
+            self.log.warning('Invalid aqi count: '+ str(error_count))
             return False
 
     def __remove_old_update_files(self) -> None:
@@ -185,6 +187,6 @@ class AqiUpdater():
                 except Exception:
                     error_count += 1
                     pass
-        self.log.info('removed '+ str(rm_count) +' old edge aqi csv files')
+        self.log.info('Removed '+ str(rm_count) +' old edge aqi csv files')
         if (error_count > 0):
-            self.log.warning(f'could not remove {error_count} old edge aqi csv files')
+            self.log.warning(f'Could not remove {error_count} old edge aqi csv files')

@@ -14,38 +14,31 @@ from datetime import datetime
 from typing import List, Set, Dict, Tuple, Optional
 from common.logger import Logger
 
-class AqiFetcher:
-    """AqiFetcher can download, extract and convert air quality index (AQI) data from FMI's Enfuser model. 
-    
-    Specifically, it can download the data as a zip archive file, extract a netCDF file containing the air quality 
-    index layer and convert it into a GeoTIFF raster. Also, it can delete created temporary and old AQI files.
 
+class AqiFetcher:
+    """AqiFetcher can download, extract and adjust air quality index (AQI) data from FMI's Enfuser model. 
+    
     Notes:
         The required python environment for using the class can be installed with: conda env create -f conda-env.yml.
         
-        A typical use of this class for fetching and processing Enfuser AQI data on a timely basis is demonstrated in 
-        file ../aqi_processor_app.py. Essentially, AQI processing workflow is composed of the following steps:
+        Essentially, AQI download workflow is composed of the following steps (executed by fetch_process_current_aqi_data()):
             1)	Create a key for fetching Enfuser data based on current UTC time (e.g. “allPollutants_2019-11-08T11.zip”).
             2)  Fetch a zip archive that contains Enfuser netCDF data from Amazon S3 bucket using the key, 
                 aws_access_key_id and aws_secret_access_key. 
             3)  Extract Enfuser netCDF data (e.g. allPollutants_2019-09-11T15.nc) from the downloaded zip archive.
             4)  Extract AQI layer from the allPollutants*.nc file and export it as GeoTiff (WGS84).
             5)  Open the exported raster and fill nodata values with interpolated values. 
-                Value 1 is considered nodata in the data. This is an optional step.
-            6)  If AQI is used for route optimization, join AQI values to the edges of a graph (street network) 
-                by spatial sampling at the centroids of the edges. 
-        The methods in this class are defined in the assumed order of use (based on the above workflow).
-        Instructions on how to use the methods are included in their docstrings.  
+                Value 1 is considered nodata in the data. This is an optional step. 
 
     Attributes:
         log: An instance of Logger class for writing log messages.
         wip_aqi_tif: The name of an aqi tif file that is currently being produced (wip = work in progress).
         latest_aqi_tif: The name of the latest AQI tif file that was processed.
         __aqi_dir: A filepath pointing to a directory where all AQI files will be downloaded to and processed.
-        __s3_bucketname: The name of an AWS s3 bucket from where the enfuser data will be fetched from.
-        __s3_region: The name of an AWS s3 bucket from where the enfuser data will be fetched from.
-        __AWS_ACCESS_KEY_ID: The name of a "secret" aws access key id to enfuser s3 bucket.
-        __AWS_SECRET_ACCESS_KEY: The name of a "secret" aws access key to enfuser s3 bucket.
+        __s3_bucketname: The name of the AWS s3 bucket from where the enfuser data will be fetched from.
+        __s3_region: The name of the AWS s3 bucket from where the enfuser data will be fetched from.
+        __AWS_ACCESS_KEY_ID: A secret AWS access key id to enfuser s3 bucket.
+        __AWS_SECRET_ACCESS_KEY: A secret AWS access key to enfuser s3 bucket.
         __temp_files_to_rm (list): A list where names of created temporary files will be collected during processing.
         __status: The status of the aqi processor - has latest AQI data been processed or not.
 
@@ -85,14 +78,14 @@ class AqiFetcher:
     def fetch_process_current_aqi_data(self) -> None:
         self.__set_wip_aqi_tif_name(self.__get_current_aqi_tif_name)
         enfuser_data_key, aqi_zip_name = self.__get_current_enfuser_key_filename()
-        self.log.info('created key for current AQI: '+ enfuser_data_key)
-        self.log.info('fetching enfuser data...')
+        self.log.info('Created key for current AQI: '+ enfuser_data_key)
+        self.log.info('Fetching enfuser data...')
         aqi_zip_name = self.__fetch_enfuser_data(enfuser_data_key, aqi_zip_name)
-        self.log.info('got aqi_zip: '+ aqi_zip_name)
+        self.log.info('Got aqi_zip: '+ aqi_zip_name)
         aqi_nc_name = self.__extract_zipped_aqi(aqi_zip_name)
-        self.log.info('extracted aqi_nc: '+ aqi_nc_name)
+        self.log.info('Extracted aqi_nc: '+ aqi_nc_name)
         aqi_tif_name = self.__convert_aqi_nc_to_raster(aqi_nc_name)
-        self.log.info('extracted aqi_tif: '+ aqi_tif_name)
+        self.log.info('Extracted aqi_tif: '+ aqi_tif_name)
         aqi_tif_name = self.__fillna_in_raster(aqi_tif_name, na_val=1.0) 
         self.latest_aqi_tif = aqi_tif_name
 
@@ -214,12 +207,12 @@ class AqiFetcher:
         for offset in [0.0, 0.01, 0.02, 0.04, 0.06, 0.08, 0.1, 0.12]:
             na_offset = na_val + offset
             nodata_count = np.sum(aqi_band <= na_offset)
-            self.log.info('nodata offset: '+ str(offset) + ' nodata count: '+ str(nodata_count))
+            self.log.info('Nodata offset: '+ str(offset) + ' nodata count: '+ str(nodata_count))
             # check if nodata values can be mapped with the current offset
             if (nodata_count > 180000):
                 break
         if (nodata_count < 180000):
-            self.log.info('failed to set nodata values in the aqi tif, nodata count: ', str(nodata_count))
+            self.log.info('Failed to set nodata values in the aqi tif, nodata count: ', str(nodata_count))
 
         aqi_nodata_mask = np.where(aqi_band <= na_offset, 0, aqi_band)
         # fill nodata in aqi_band using nodata mask
@@ -228,7 +221,7 @@ class AqiFetcher:
         # validate AQI values after na fill
         invalid_count = np.sum(aqi_band_fillna < 1.0)
         if (invalid_count > 0):
-            self.log.warning('aqi band has '+ str(invalid_count) +' below 1 aqi values after na fill')
+            self.log.warning('AQI band has '+ str(invalid_count) +' below 1 aqi values after na fill')
 
         # write raster with filled nodata
         aqi_raster_fillna = rasterio.open(
@@ -260,9 +253,9 @@ class AqiFetcher:
             except Exception:
                 not_removed.append(rm_filename)
                 pass
-        self.log.info('removed '+ str(rm_count) +' temp files')
+        self.log.info('Removed '+ str(rm_count) +' temp files')
         if (len(not_removed) > 0):
-            self.log.warning('could not remove '+ str(len(not_removed)) + ' files')
+            self.log.warning('Could not remove '+ str(len(not_removed)) + ' files')
         self.__temp_files_to_rm = not_removed
 
     def __remove_old_aqi_files(self) -> None:
@@ -278,6 +271,6 @@ class AqiFetcher:
                 except Exception:
                     error_count += 1
                     pass
-        self.log.info('removed '+ str(rm_count) +' old edge aqi tif files')
+        self.log.info('Removed '+ str(rm_count) +' old edge aqi tif files')
         if (error_count > 0):
-            self.log.warning('could not remove '+ error_count +' old aqi tif files')
+            self.log.warning('Could not remove '+ error_count +' old aqi tif files')

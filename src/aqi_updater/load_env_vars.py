@@ -10,13 +10,13 @@ def load_env_vars(log):
             k=var.split('/')[-1]
             v=open(var).read().rstrip('\n')
             os.environ[k] = v
-            log.info('read docker secret: '+ str(k) +' (len: '+ str(len(v))+')')
+            log.info('Read docker secret: '+ str(k) +' (len: '+ str(len(v))+')')
             found_secrets = True
     except Exception:
         traceback.print_exc()
         pass
     if (found_secrets == False):
-        log.warning('no docker secrets found')
+        log.warning('No docker secrets found')
 
     try:
         fh = open('.env', 'r')
@@ -26,7 +26,7 @@ def load_env_vars(log):
             row = line.partition('=')
             os.environ[row[0]] = row[2]
         fh.close()
-        log.info(f'read {len(lines)} variables to env from .env file')
+        log.info(f'Read {len(lines)} variables to env from .env file')
     except Exception:
-        log.warning('no .env file found')
+        log.warning('No .env file found')
         pass
