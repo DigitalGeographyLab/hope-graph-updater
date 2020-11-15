@@ -76,7 +76,7 @@ class AqiFetcher:
         return b_available
 
     def fetch_process_current_aqi_data(self) -> None:
-        self.__set_wip_aqi_tif_name(self.__get_current_aqi_tif_name)
+        self.__set_wip_aqi_tif_name(self.__get_current_aqi_tif_name())
         enfuser_data_key, aqi_zip_name = self.__get_current_enfuser_key_filename()
         self.log.info('Created key for current AQI: '+ enfuser_data_key)
         self.log.info('Fetching enfuser data...')
